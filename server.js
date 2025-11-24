@@ -4,17 +4,22 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 const app = express();
+
+// Middlewares
 app.use(cors());
 app.use(express.json());
 
 // Conexão com MongoDB
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
   .then(() => console.log("MongoDB conectado com sucesso!"))
   .catch(err => console.error("Erro ao conectar no MongoDB:", err));
 
-// Modelo
+// Schema e Model
 const EnderecoSchema = new mongoose.Schema({
-  cep: { type: String, unique: true, required: true },
+  cep: { type: String, required: true, unique: true },
   logradouro: String,
   bairro: String,
   cidade: String,
@@ -23,35 +28,49 @@ const EnderecoSchema = new mongoose.Schema({
 
 const Endereco = mongoose.model("Endereco", EnderecoSchema);
 
-// Rota teste
+// Rota inicial
 app.get("/", (req, res) => {
-  res.send("Backend funcionando com MongoDB!");
+  res.json({ message: "Backend funcionando com MongoDB!" });
 });
 
-// Listar endereços
+// Listar todos os endereços
 app.get("/enderecos", async (req, res) => {
   try {
     const enderecos = await Endereco.find().sort({ cep: 1 });
     res.json(enderecos);
   } catch (err) {
-    res.status(500).json({ error: "Erro ao listar endereços" });
+    res.status(500).json({ error: "Erro ao listar endereços", details: err });
   }
 });
 
-// Salvar endereço
+// Criar / Salvar endereço
 app.post("/enderecos", async (req, res) => {
   const { cep, logradouro, bairro, cidade, uf } = req.body;
 
   try {
+    // Verifica se já existe
     const existe = await Endereco.findOne({ cep });
-    if (existe) return res.status(400).json({ error: "CEP já salvo" });
+    if (existe) {
+      return res.status(400).json({ error: "CEP já está salvo" });
+    }
 
-    const novo = new Endereco({ cep, logradouro, bairro, cidade, uf });
-    await novo.save();
-    res.status(201).json({ message: "Endereço salvo com sucesso" });
+    const novoEndereco = new Endereco({
+      cep,
+      logradouro,
+      bairro,
+      cidade,
+      uf
+    });
+
+    await novoEndereco.save();
+
+    res.status(201).json({
+      message: "Endereço salvo com sucesso!",
+      endereco: novoEndereco
+    });
 
   } catch (err) {
-    res.status(500).json({ error: "Erro ao salvar endereço" });
+    res.status(500).json({ error: "Erro ao salvar endereço", details: err });
   }
 });
 
@@ -67,12 +86,15 @@ app.delete("/enderecos/:cep", async (req, res) => {
     }
 
     res.json({ message: "Endereço deletado com sucesso" });
+
   } catch (err) {
-    res.status(500).json({ error: "Erro ao deletar endereço" });
+    res.status(500).json({ error: "Erro ao deletar endereço", details: err });
   }
 });
 
+// Porta do servidor
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`Servidor rodando na porta ${PORT}`)
-);
+
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
+});
