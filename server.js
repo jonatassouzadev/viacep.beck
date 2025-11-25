@@ -9,11 +9,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Conexão com MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+// Conexão com MongoDB (SEM opções antigas)
+mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB conectado com sucesso!"))
   .catch(err => console.error("Erro ao conectar no MongoDB:", err));
 
@@ -48,7 +45,6 @@ app.post("/enderecos", async (req, res) => {
   const { cep, logradouro, bairro, cidade, uf } = req.body;
 
   try {
-    // Verifica se já existe
     const existe = await Endereco.findOne({ cep });
     if (existe) {
       return res.status(400).json({ error: "CEP já está salvo" });
